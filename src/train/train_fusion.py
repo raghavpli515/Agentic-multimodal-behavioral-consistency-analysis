@@ -9,7 +9,7 @@ from torch.utils.data import DataLoader, random_split
 from train.fusion_dataset import FusionDataset
 from models.video_model import VideoModel
 from models.audio_model import AudioModel
-from models.fusion_model import FusionModel
+from models.fusion_model_old import FusionModel
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 print("Using device:", device)

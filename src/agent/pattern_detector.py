@@ -26,3 +26,77 @@ class PatternDetector:
         confidence = np.array([s['confidence'] for s in self.segments])
         return float(confidence[-1] - confidence[0])  # This line calculates the drift in confidence by taking the difference between the last confidence value and the first confidence value in the segments. A positive value indicates an increase in confidence over time, while a negative value indicates a decrease. This measure helps us understand whether the model's confidence is improving or deteriorating across the segments, which can be an important indicator of concept drift or changes in the underlying data distribution.
             
+
+    def detect_escalation(self):
+
+        entropy = np.array([s['entropy'] for s in self.segments])
+        trust = np.array([s['trust'] for s in self.segments])
+
+        entropy_trend = np.polyfit(
+            range(len(entropy)),
+            entropy,
+            1
+        )[0]
+
+        trust_trend = np.polyfit(
+            range(len(trust)),
+            trust,
+            1
+        )[0]
+
+        if entropy_trend > 0.02 and trust_trend < -0.02:
+            return True
+
+        return False
+    
+    def detect_modal_conflicts(self):
+
+        conflicts = []
+
+        for s in self.segments:
+
+            modal_preds = s.get(
+                "modal_predictions",
+                {}
+            )
+
+            if len(modal_preds) < 2:
+                continue
+
+            preds = list(modal_preds.values())
+
+            unique_preds = set(preds)
+
+            # ====================================
+            # NO CONFLICT
+            # ====================================
+
+            if len(unique_preds) == 1:
+                continue
+
+            # ====================================
+            # CONFLICT SEVERITY
+            # ====================================
+
+            severity = "LOW"
+
+            if len(unique_preds) == 2:
+                severity = "MEDIUM"
+
+            if len(unique_preds) >= 3:
+                severity = "HIGH"
+
+            conflicts.append({
+
+                "segment_id": s["segment_id"],
+
+                "modal_predictions": modal_preds,
+
+                "severity": severity,
+
+                "trust": s.get("trust", 0),
+
+                "confidence": s.get("confidence", 0)
+            })
+
+        return conflicts    

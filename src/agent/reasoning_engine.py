@@ -40,5 +40,57 @@ class ReasoningEngine:
         if len(self.patterns['suspicious_segments']) > 5:
             reasons.append(f"{len(self.patterns['suspicious_segments'])} segments flagged as suspicious due to low confidence and high entropy")
 
+        if self.patterns.get("escalation_detected", False):
+
+            reasons.append(
+                "Behavioral escalation detected through "
+                "rising uncertainty and declining trust"
+            )
+
+        if len(self.patterns.get("modal_conflicts", [])) > 3:
+
+            reasons.append(
+                "Persistent cross-modal disagreement observed"
+            )
+
+        if (
+            self.trends['trust_trend'] < 0 and
+            self.trends['entropy_trend'] > 0
+        ):
+            reasons.append(
+                "Behavioral stability deteriorating over time"
+            )
+
+        if len(self.patterns['modal_conflicts']) > 0:
+
+            high_conflicts = [
+                c for c in self.patterns['modal_conflicts']
+                if c['severity'] == "HIGH"
+            ]
+
+            if len(high_conflicts) > 0:
+
+                reasons.append(
+                    f"{len(high_conflicts)} high-severity cross-modal contradictions detected"
+                )
+
+            else:
+
+                reasons.append(
+                    "Moderate cross-modal behavioral inconsistencies observed"
+                )
+
+        recovery = self.patterns.get(
+            "behavioral_recovery",
+            False
+        )
+
+        if recovery:
+
+            reasons.append(
+                "Behavior demonstrates partial recovery "
+                "from unstable states"
+            )
+
         return reasons
             

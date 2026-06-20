@@ -1,9 +1,9 @@
-# Interview analyzer.py
+# Interview analyzer.py 
 
 import torch
 import numpy as np
 import os
-import gc
+import gc 
 from src.pipeline.temporal_segmenter import segment_video
 from src.inference.inference_engine import InferenceEngine
 from src.preprocess.audio_utils import extract_audio_segment, compute_mfcc
@@ -39,9 +39,33 @@ class InterviewAnalyzer:
             try:
                 audio_path = extract_audio_segment(video_path, start, end)
                 mfcc = compute_mfcc(audio_path)
-                mfcc = mfcc.T  # Transpose to (time_frames, n_mfcc) for model input
-                audio_tensor = torch.tensor(mfcc).unsqueeze(0).float()  #.unsqueeze(0) adds a batch dimension to the tensor, making it compatible with the expected input shape of the model. The .float() method converts the tensor to a floating-point data type, which is typically required for input to neural networks.
 
+                print("[DEBUG] MFCC SHAPE:", mfcc.shape)
+
+                audio_tensor = torch.from_numpy(
+                    mfcc.T
+                ).unsqueeze(0)
+
+                print(
+                    "[DEBUG] AUDIO TENSOR SHAPE:",
+                    audio_tensor.shape
+                )
+
+                print(
+                    "[DEBUG] AUDIO NAN:",
+                    torch.isnan(audio_tensor).any()
+                )
+
+                print(
+                    "[DEBUG] AUDIO INF:",
+                    torch.isinf(audio_tensor).any()
+                )
+                print("FINAL AUDIO SHAPE:", audio_tensor.shape)
+                print("MIN:", audio_tensor.min())
+                print("MAX:", audio_tensor.max())
+                print("NAN:", torch.isnan(audio_tensor).any())
+                print("INF:", torch.isinf(audio_tensor).any())
+                
             except Exception as e:
                 print(f"[WARNING] Audio failed for segment {i}: {e}")
                 audio_tensor = None
@@ -100,8 +124,9 @@ class InterviewAnalyzer:
                 "confidence": confidence,
                 "entropy": float(entropy),
                 "trust": float(trust),
-                "reliability": reliability
-            })
+                "reliability": reliability,
+                "modal_predictions": output["modal_predictions"],
+                "trust_analysis": output["trust_analysis"]            })
 
             #  Cleanup temp audio file
             if audio_path and os.path.exists(audio_path):
@@ -113,8 +138,9 @@ class InterviewAnalyzer:
             if audio_tensor is not None:
                 del audio_tensor
 
-            torch.cuda.empty_cache()
             gc.collect()
+            torch.cuda.empty_cache()
+            
 
         print(f"[DEBUG] Analysis complete. Total predictions: {len(timeline_predictions)}")
         return timeline_predictions

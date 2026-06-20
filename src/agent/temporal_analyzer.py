@@ -29,3 +29,38 @@ class TemporalAnalyzer:
             "confidence_std": np.std(confidence),   # np.std() is a function from the NumPy library that calculates the standard deviation of a set of values. In this context, we are calculating the standard deviation of the confidence values across the segments to measure how much the confidence fluctuates over time. A higher standard deviation indicates greater volatility in confidence, while a lower standard deviation suggests more stable confidence levels across the segments.
             "entropy_std": np.std(entropy)  # Similar to confidence_std, this calculates the standard deviation of the entropy values across the segments, providing insight into how much the uncertainty in predictions varies over time. A higher standard deviation in entropy indicates more fluctuation in uncertainty, while a lower standard deviation suggests more consistent levels of uncertainty across the segments.
         }
+    
+    def compute_persistence(self):
+
+        labels = [s['behavior_label'] for s in self.segments]
+
+        persistent_uncertain = 0
+        persistent_inconsistent = 0
+
+        curr_uncertain = 0
+        curr_inconsistent = 0
+
+        for label in labels:
+
+            if label == "UNCERTAIN":
+                curr_uncertain += 1
+                persistent_uncertain = max(
+                    persistent_uncertain,
+                    curr_uncertain
+                )
+            else:
+                curr_uncertain = 0
+
+            if label == "INCONSISTENT":
+                curr_inconsistent += 1
+                persistent_inconsistent = max(
+                    persistent_inconsistent,
+                    curr_inconsistent
+                )
+            else:
+                curr_inconsistent = 0
+
+        return {
+            "persistent_uncertain": persistent_uncertain,
+            "persistent_inconsistent": persistent_inconsistent
+        }

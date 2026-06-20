@@ -1,19 +1,210 @@
 import torch
 import torch.nn as nn
-#The FusionModel class is a PyTorch neural network module that combines the embeddings from the video and audio models to perform multimodal classification.
-class FusionModel(nn.Module):
-    def __init__(self, video_dim, audio_dim, num_classes=5):  # The constructor takes the dimensions of the video and audio embeddings (video_dim and audio_dim) and the number of output classes (num_classes) as arguments. It defines a fusion network that consists of fully connected layers with ReLU activations and dropout for regularization, ultimately producing a final output for classification.
-        super(FusionModel, self).__init__()
+import torchvision.models as models
+from transformers import DistilBertModel
+print("FUSION_MODEL_RELOADED_12345")
 
-        self.fusion = nn.Sequential(
-            nn.Linear(video_dim + audio_dim, 256),
-            nn.ReLU(),
-            nn.Dropout(0.4),
-            nn.Linear(256, 128),
-            nn.ReLU(),
-            nn.Linear(128, num_classes)
+# =========================================
+# VIDEO MODEL
+# =========================================
+class VideoModel(nn.Module):
+    def __init__(self):
+        super().__init__()
+
+        backbone = models.mobilenet_v2(pretrained=True)
+
+        self.features = backbone.features
+
+        for param in self.features.parameters():
+            param.requires_grad = False
+
+        self.pool = nn.AdaptiveAvgPool2d((1, 1))
+
+        self.fc = nn.Linear(1280, 128)
+
+        self.classifier = nn.Linear(128, 5)
+
+    def forward(self, x, return_embedding=False):
+
+        B, T, C, H, W = x.shape
+
+        x = x.view(B * T, C, H, W)
+
+        feat = self.features(x)
+        feat = self.pool(feat)
+        feat = feat.view(feat.size(0), -1)
+
+        feat = self.fc(feat)
+
+        feat = feat.view(B, T, -1)
+
+        feat = feat.mean(dim=1)
+
+        if return_embedding:
+            return feat
+
+        return self.classifier(feat)
+    
+# =========================================
+# AUDIO MODEL
+# =========================================
+class AudioModel(nn.Module):
+    def __init__(self):
+        super().__init__()
+
+        self.lstm = nn.LSTM(
+            input_size=40,
+            hidden_size=128,
+            batch_first=True,
+            bidirectional=True
         )
-    # The forward method takes the video and audio embeddings as input, concatenates them along the feature dimension, and passes the combined representation through the fusion network to produce the final output for classification. This allows the model to learn how to effectively combine information from both modalities (video and audio) to make predictions.
-    def forward(self, video_embed, audio_embed):
-        combined = torch.cat((video_embed, audio_embed), dim=1) #The torch.cat function is used to concatenate the video and audio embeddings along the feature dimension (dim=1). This creates a single combined representation that contains information from both modalities, which can then be processed by the fusion network to make predictions.The feature dimension is typically the second dimension (dim=1) in a batch of embeddings, where the first dimension (dim=0) represents the batch size. By concatenating along dim=1, we are effectively combining the features from both the video and audio embeddings for each sample in the batch.
-        return self.fusion(combined)
+
+        self.fc = nn.Linear(256, 128)
+
+        self.classifier = nn.Linear(128, 5)
+
+    def forward(self, x, return_embedding=False):
+
+        print("\n===== AUDIO INPUT =====")
+        print("Shape:", x.shape)
+        print("Device:", x.device)
+        print("Dtype:", x.dtype)
+
+        print("Min:", x.min().item())
+        print("Max:", x.max().item())
+
+        print("NaN:", torch.isnan(x).any().item())
+        print("Inf:", torch.isinf(x).any().item())
+
+        print("Contiguous:", x.is_contiguous())
+
+        x = x.contiguous()
+        print("LSTM INPUT SHAPE:", x.shape)
+        print("LSTM DEVICE:", x.device)
+        print("LSTM DTYPE:", x.dtype)
+
+        try:
+            out, _ = self.lstm(x)
+        except Exception as e:
+
+            print("SHAPE:", x.shape)
+
+            print("MIN:", x.min())
+
+            print("MAX:", x.max())
+
+            print("NAN:", torch.isnan(x).any())
+
+            print("INF:", torch.isinf(x).any())
+
+            raise e
+
+        out = out[:, -1, :]
+
+        feat = self.fc(out)
+
+        if return_embedding:
+            return feat
+
+        return self.classifier(feat)
+    
+
+# =========================================
+# TEXT MODEL
+# =========================================
+class TextModel(nn.Module):
+    def __init__(self):
+        super().__init__()
+
+        self.bert = DistilBertModel.from_pretrained(
+            "distilbert-base-uncased"
+        )
+
+        for param in self.bert.parameters():
+            param.requires_grad = False
+
+        self.fc = nn.Linear(768, 128)
+
+        self.classifier = nn.Linear(128, 5)
+
+    def forward(self, input_ids, attention_mask,
+                return_embedding=False):
+
+        out = self.bert(
+            input_ids=input_ids,
+            attention_mask=attention_mask
+        )
+
+        cls = out.last_hidden_state[:, 0, :]
+
+        feat = self.fc(cls)
+
+        if return_embedding:
+            return feat
+
+        return self.classifier(feat)
+
+# =========================================
+# FUSION MODEL
+# =========================================
+class FusionModel(nn.Module):
+    def __init__(self):
+        super().__init__()
+
+        self.audio_model = AudioModel()
+        self.text_model = TextModel()
+        self.video_model = VideoModel()
+
+        self.classifier = nn.Sequential(
+            nn.Linear(128 * 3, 128),
+            nn.ReLU(),
+            nn.Dropout(0.3),
+            nn.Linear(128, 5)
+        )
+
+    def forward(
+        self,
+        audio,
+        input_ids,
+        attention_mask,
+        video,
+        return_all=False
+    ):
+
+        audio_feat = self.audio_model(
+            audio,
+            return_embedding=True
+        )
+
+        text_feat = self.text_model(
+            input_ids,
+            attention_mask,
+            return_embedding=True
+        )
+
+        video_feat = self.video_model(
+            video,
+            return_embedding=True
+        )
+
+        fused = torch.cat([
+            audio_feat,
+            text_feat,
+            video_feat
+        ], dim=1)
+
+        fusion_logits = self.classifier(fused)
+
+        audio_logits = self.audio_model.classifier(audio_feat)
+        text_logits = self.text_model.classifier(text_feat)
+        video_logits = self.video_model.classifier(video_feat)
+
+        if return_all:
+            return {
+                "fusion_logits": fusion_logits,
+                "audio_logits": audio_logits,
+                "text_logits": text_logits,
+                "video_logits": video_logits
+            }
+
+        return fusion_logits
