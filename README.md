@@ -489,7 +489,7 @@ This work introduces:
 
 # Demo
 
-<video src="demo/demo.mp4" controls width="720"></video>
+<video src="https://github.com/user-attachments/assets/3aeb586a-bf65-4852-b27d-33a2d19132b6" controls width="720"></video>
 
 ---
 
