@@ -487,6 +487,12 @@ This work introduces:
 
 ---
 
+# Demo
+
+<video src="demo/demo.mp4" controls width="720"></video>
+
+---
+
 # Author
 
 Raghav Pimoli
