@@ -492,6 +492,30 @@ This work introduces:
 <video src="https://github.com/user-attachments/assets/3aeb586a-bf65-4852-b27d-33a2d19132b6" controls width="720"></video>
 
 ---
+## Limitations & Ethical Considerations
+
+This project is a research-oriented multimodal AI system designed to analyze behavioral consistency using visual, audio, and textual signals. It is intended to explore multimodal reasoning and trust-aware AI techniques rather than to provide definitive judgments about human honesty, credibility, or intent.
+
+### Limitations
+
+* Behavioral patterns do not directly indicate deception, truthfulness, or intent.
+* Model predictions may be affected by variations in lighting, camera quality, background noise, language, accents, recording conditions, and video quality.
+* Performance may vary across populations if the training data is not sufficiently diverse or representative.
+* The reported evaluation metrics reflect performance on the datasets used in this project and should not be interpreted as guarantees of real-world performance.
+* The system is designed for research and educational purposes and has not been validated for deployment in high-stakes decision-making environments.
+
+### Ethical Considerations
+
+* This system should be used only as a decision-support tool and never as the sole basis for employment, legal, medical, educational, or financial decisions.
+* Human oversight should always be maintained when interpreting model outputs.
+* Any deployment involving personal data should comply with applicable privacy and data protection regulations, including informed consent and responsible data handling practices.
+* Developers should evaluate the system for fairness, robustness, and potential demographic biases before considering real-world deployment.
+* Transparency and explainability are important design principles. Model outputs should be accompanied by confidence estimates, uncertainty measures, and clear explanations of their limitations whenever possible.
+
+This project aims to contribute to research in multimodal AI, explainable reasoning, and trust-aware machine learning while encouraging responsible and ethical development of AI systems.
+
+
+---
 
 # Author
 
